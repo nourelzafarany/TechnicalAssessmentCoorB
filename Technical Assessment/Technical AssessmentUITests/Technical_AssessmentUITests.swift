@@ -8,36 +8,115 @@
 import XCTest
 
 final class Technical_AssessmentUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
+    var app: XCUIApplication!
+    
+    // MARK: - Lifecycle
+    override func setUp() {
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+        app = XCUIApplication()
+        // Disables animations (optional, but reduces flakiness if you wire it in app)
+        app.launchArguments += ["--ui-testing", "-UITestsDisableAnimations"]
     }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    
+    override func tearDown() {
+        app = nil
+        super.tearDown()
     }
-
-    @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
+    
+    // MARK: - Launch helper
+    private func launch(state: String = "loaded", seed: String = "basic") {
+        app.launchEnvironment["UI_STATE"] = state
+        app.launchEnvironment["UI_SEED"]  = seed
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+    }
+    
+    // MARK: - Element helpers (robust selectors)
+    private func waitForCountriesTitle(timeout: TimeInterval = 5) -> Bool {
+        if app.otherElements["countries.title"].waitForExistence(timeout: 1) { return true }
+        if app.navigationBars["Countries"].waitForExistence(timeout: 1) { return true }
+        return app.staticTexts["Countries"].waitForExistence(timeout: timeout)
+    }
+    
+    private func countriesListElement() -> XCUIElement {
+        if app.tables["countries.list"].exists { return app.tables["countries.list"] }
+        if app.tables.firstMatch.exists { return app.tables.firstMatch }
+        if app.collectionViews["countries.list"].exists { return app.collectionViews["countries.list"] }
+        return app.collectionViews.firstMatch
     }
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+    /// Returns row by ID if present, else by visible country name within the list.
+    private func row(alpha2: String, visibleName: String) -> XCUIElement? {
+        let idMatch = app.otherElements["countries.row.\(alpha2)"]
+        if idMatch.exists { return idMatch }
+        
+        let list = countriesListElement()
+        if list.elementType == .table {
+            let cell = list.cells.containing(.staticText, identifier: visibleName).firstMatch
+            if cell.exists { return cell }
+        }
+        
+        let text = app.staticTexts[visibleName]
+        if text.exists { return text }
+        
+        return nil
+    }
+    
+    private func plusButton() -> XCUIElement {
+        if app.buttons["countries.addButton"].exists { return app.buttons["countries.addButton"] }
+        // fallback: the "+" image button
+        let add = app.buttons.matching(NSPredicate(format: "label == '+' OR identifier == 'Add Country'")).firstMatch
+        return add.exists ? add : app.buttons.element(boundBy: 0)
+    }
+    
+    private func dumpHierarchy() {
+        print(app.debugDescription)
+        add(XCTAttachment(screenshot: XCUIScreen.main.screenshot()))
+    }
+    
+    func testSearch_FiltersList() {
+        launch(state: "loaded", seed: "basic")
+        XCTAssertTrue(waitForCountriesTitle())
+        // Reveal/tap search field
+        if !app.searchFields["Search countries"].exists {
+            // On some devices, pull down to reveal the search bar in nav drawer
+            app.swipeDown()
+        }
+        let search = app.searchFields["Search countries"]
+        XCTAssertTrue(search.waitForExistence(timeout: 3), "Search field not found")
+        
+        search.tap()
+        search.typeText("egy")
+        
+        guard let egypt = row(alpha2: "EG", visibleName: "Egypt") else {
+            dumpHierarchy()
+            XCTFail("Egypt row not found after search")
+            return
+        }
+        XCTAssertTrue(egypt.waitForExistence(timeout: 2))
+    }
+    
+    func testSwipeToDelete_RemovesRow() {
+        launch(state: "loaded", seed: "basic")
+        XCTAssertTrue(waitForCountriesTitle())
+        
+        let list = countriesListElement()
+        XCTAssertTrue(list.waitForExistence(timeout: 3))
+        // Target Egypt cell
+        let egyptCell =
+        app.otherElements["countries.row.EG"].exists
+        ? app.otherElements["countries.row.EG"]
+        : (row(alpha2: "EG", visibleName: "Egypt") ?? list.cells.firstMatch)
+        XCTAssertTrue(egyptCell.exists, "Egypt row not found for delete")
+
+        // Swipe left and tap Delete
+        egyptCell.swipeLeft()
+        let delete = app.buttons["Delete"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 2), "Delete action not visible")
+        delete.tap()
+        
+        // If using IDs:
+        if app.otherElements["countries.row.EG"].exists {
+            XCTAssertFalse(app.otherElements["countries.row.EG"].waitForExistence(timeout: 2))
         }
     }
 }

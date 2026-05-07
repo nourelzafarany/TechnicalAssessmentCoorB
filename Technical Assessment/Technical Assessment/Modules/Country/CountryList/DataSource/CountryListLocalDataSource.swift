@@ -6,45 +6,66 @@
 //
 
 import Foundation
+import SwiftData
 protocol CountryListLocalDataSourceProtocol {
-    func loadCountries() throws -> [CountryListResponse]
-    func saveCountries(_ countries: [CountryEntity]) throws
-    func lastUpdatedAt() -> Date?
+    func loadCountries() throws -> [LocalCountryEntity]
+    func saveCountries(_ countries: [LocalCountryEntity]) throws
+    func getLastUpdatedDate() -> Date?
 }
 
 
 // MARK: - File-based implementation
 struct CountryListLocalDataSource: CountryListLocalDataSourceProtocol {
-    private let itemsURL: URL
-    private let metaURL: URL
-
+    private let context: ModelContext
+    private let lastUpdatedKey = "countries_last_updated"
+    
     init() {
-        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        self.itemsURL = dir.appendingPathComponent("countries.json")
-        self.metaURL  = dir.appendingPathComponent("countries_meta.json")
+        do {
+            let container = try ModelContainer(for: LocalCountryEntity.self)
+            self.context = ModelContext(container)
+        } catch {
+            fatalError("Failed to create SwiftData container")
+        }
     }
-
-    func loadCountries() throws -> [CountryListResponse] {
-        guard FileManager.default.fileExists(atPath: itemsURL.path) else { return [] }
-        let data = try Data(contentsOf: itemsURL)
-        return try JSONDecoder().decode([CountryListResponse].self, from: data)
+    
+    func saveCountries(_ countries: [LocalCountryEntity]) throws {
+        countries.forEach {
+            context.insert($0)
+        }
+        try context.save()
+        saveLastUpdatedDate()
     }
-
-    func saveCountries(_ countries: [CountryEntity]) throws {
-//        let data = try JSONEncoder().encode(countries)
-//        try data.write(to: itemsURL, options: .atomic)
-//
-//        // store a simple updatedAt timestamp for freshness checks
-//        let meta = try JSONEncoder().encode(["updatedAt": Date()])
-//        try meta.write(to: metaURL, options: .atomic)
+    
+    func loadCountries() throws -> [LocalCountryEntity] {
+        
+        let descriptor = FetchDescriptor<LocalCountryEntity>(
+            sortBy: [
+                SortDescriptor(\.name)
+            ]
+        )
+        
+        return try context.fetch(descriptor)
     }
-
-    func lastUpdatedAt() -> Date? {
-        guard
-            let data = try? Data(contentsOf: metaURL),
-            let dict = try? JSONDecoder().decode([String: Date].self, from: data)
-        else { return nil }
-        return dict["updatedAt"]
+    
+    func hasCachedCountries() -> Bool {
+        do {
+            let countries = try loadCountries()
+            return !countries.isEmpty
+        } catch {
+            return false
+        }
+    }
+    
+    private func saveLastUpdatedDate() {
+        UserDefaults.standard.set(
+            Date(),
+            forKey: lastUpdatedKey
+        )
+    }
+    func getLastUpdatedDate() -> Date? {
+        
+        UserDefaults.standard.object(
+            forKey: lastUpdatedKey
+        ) as? Date
     }
 }
-

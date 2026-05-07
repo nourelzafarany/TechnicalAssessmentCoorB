@@ -30,7 +30,7 @@ struct CountryEntity: Identifiable, Equatable {
 }
 
 struct CountryMapper {
-    func fromRespToDto(_ resp: CountryListResponse) -> CountryEntity {
+    func fromRespToEntity(_ resp: CountryListResponse) -> CountryEntity {
         let codeLower = resp.alpha2Code.lowercased()
         let png = "https://flagcdn.com/w80/\(codeLower).png"
         let cur = resp.currencies?.first
@@ -42,6 +42,18 @@ struct CountryMapper {
             currencyCode: cur?.code,
             currencyName: cur?.name,
             currencySymbol: cur?.symbol
+        )
+    }
+    
+    func fromDtoToLocal(_ local: CountryEntity) -> LocalCountryEntity {
+        return LocalCountryEntity(
+            name: local.name,
+            alpha2Code: local.alpha2Code,
+            flagPNG: local.flagPNG,
+            capital: local.capital ?? "",
+            currencyCode: local.currencyCode ?? "",
+            currencyName: local.currencyName ?? "",
+            currencySymbol: local.currencySymbol ?? ""
         )
     }
 }

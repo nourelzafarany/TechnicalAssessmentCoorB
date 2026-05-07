@@ -10,13 +10,8 @@ import CoreData
 
 @main
 struct Technical_AssessmentApp: App {
-    let persistenceController = PersistenceController.shared
-
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
-//                UITestBootstrap.makeRootForUITests()
-            } else {
                 let remote  = CountryListRemoteDataSource()
                 let local   = CountryListLocalDataSource()
                 let mapper  = CountryMapper()
@@ -27,7 +22,6 @@ struct Technical_AssessmentApp: App {
                 NavigationView {
                     CountryListView(vm: vm)
                 }
-            }
         }
     }
 }

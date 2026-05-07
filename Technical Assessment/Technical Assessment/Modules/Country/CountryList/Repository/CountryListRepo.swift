@@ -33,20 +33,16 @@ struct CountryListRepository: CountryListRepositoryProtocol {
     }
 
     func getCountries(forceRefresh: Bool = false) async throws -> [CountryEntity] {
-        if let local = local,
-           !forceRefresh,
-           let updatedAt = local.lastUpdatedAt(),
-           now().timeIntervalSince(updatedAt) < freshness,
-           let entities = try? local.loadCountries(),
-           !entities.isEmpty {
-            return entities.map(mapper.fromRespToDto)
+        let responses = try await remote.fetchCountries()
+        let countries = responses.map {
+            mapper.fromRespToEntity($0)
         }
-        let dtos = try await remote.fetchCountries()
-        let domains = dtos.map(mapper.fromRespToDto)
         if let local = local {
-            let entities = dtos.map(mapper.fromRespToDto)
-            try? local.saveCountries(entities)
+            let localCountries = countries.map {
+                mapper.fromDtoToLocal($0)
+            }
+            try? local.saveCountries(localCountries)
         }
-        return domains
+        return countries
     }
 }

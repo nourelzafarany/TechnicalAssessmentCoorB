@@ -24,11 +24,11 @@ class CountryListViewModel: ObservableObject {
     var remainingAddSlots: Int { maxUserAdds - userAddedCountries.count }
     var canAddMore: Bool { remainingAddSlots > 0 }
     
-    private let getCountries: GetCountryListUseCase
+    private let getCountries: GetCountryListUseCaseProtocol
     private let userCountryService: UserCountryServiceProtocol?
     private var currentTask: Task<Void, Never>?
 
-    init(getCountries: GetCountryListUseCase, userCountryService: UserCountryServiceProtocol?) {
+    init(getCountries: GetCountryListUseCaseProtocol, userCountryService: UserCountryServiceProtocol?) {
         self.getCountries = getCountries
         self.userCountryService = userCountryService
     }
