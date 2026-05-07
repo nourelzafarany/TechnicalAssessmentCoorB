@@ -10,12 +10,18 @@ import CoreData
 
 @main
 struct Technical_AssessmentApp: App {
-    let persistenceController = PersistenceController.shared
-
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                let remote  = CountryListRemoteDataSource()
+                let local   = CountryListLocalDataSource()
+                let mapper  = CountryMapper()
+                let repo    = CountryListRepository(remote: remote, local: local, mapper: mapper)
+                let useCase = GetCountryListUseCase(repo: repo)
+                let userCountryService = UserCountryService()
+                let vm      = CountryListViewModel(getCountries: useCase, userCountryService: userCountryService)
+                NavigationView {
+                    CountryListView(vm: vm)
+                }
         }
     }
 }
