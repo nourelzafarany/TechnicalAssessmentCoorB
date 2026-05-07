@@ -9,6 +9,7 @@ import Foundation
 import CoreLocation
 import MapKit
 
+@MainActor
 protocol UserCountryServiceProtocol {
     func getUserCountryCode() async -> String?
 }

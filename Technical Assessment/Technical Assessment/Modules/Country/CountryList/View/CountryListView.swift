@@ -64,7 +64,3 @@ struct CountryListView: View {
         })
     }
 }
-
-//#Preview {
-//    CountryListView()
-//}

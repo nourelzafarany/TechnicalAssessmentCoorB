@@ -21,9 +21,9 @@ struct ListView: View {
         case .loaded:
             List(filteredCountries) { country in
                 NavigationLink {
-//                    CountryDetailsView(
-//                        vm: CountryDetailViewModel(country: country)
-//                    )
+                    CountryDetailsView(
+                        vm: CountryDetailViewModel(country: country)
+                    )
                 } label: {
                     HStack {
                         AsyncImage(url: URL(string: country.flagPNG)) { img in

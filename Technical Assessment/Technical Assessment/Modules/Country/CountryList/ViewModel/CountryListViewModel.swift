@@ -10,6 +10,7 @@ import Combine
 
 enum Status { case idle, loading, loaded, error(String) }
 
+@MainActor
 class CountryListViewModel: ObservableObject {
 
     @Published var status: Status = .idle
@@ -61,13 +62,12 @@ class CountryListViewModel: ObservableObject {
         
         do {
             var list = try await listTask
-//            let preferred = (await userCodeTask)?.uppercased()
-//            ?? Locale.current.region?.identifier.uppercased()
+            let preferred = (await userCodeTask)?.uppercased() ?? Locale.current.region?.identifier.uppercased()
             
-//            if let idx = list.firstIndex(where: { $0.alpha2Code.uppercased() == preferred }) {
-//                let fav = list.remove(at: idx)
-//                list.insert(fav, at: 0)
-//            }
+            if let idx = list.firstIndex(where: { $0.alpha2Code.uppercased() == preferred }) {
+                let fav = list.remove(at: idx)
+                list.insert(fav, at: 0)
+            }
             countries = list
             status = .loaded
         } catch {
